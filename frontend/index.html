@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoScale AI — Predictive Autoscaling Dashboard</title>
+  <meta name="description" content="Enterprise monitoring dashboard for ML-based predictive autoscaling on cloud infrastructure." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f8cff'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M20 42h24M20 32l8-10 8 7 8-12' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+  <!-- Vendor styles -->
+  <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css" />
+  <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css" />
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ============================== SIDEBAR ============================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div class="brand-text">
+        <span class="brand-name">AutoScale&nbsp;AI</span>
+        <span class="brand-sub">Predictive Cloud Scaling</span>
+      </div>
+      <button class="sidebar-close d-lg-none" id="sidebarClose" aria-label="Close sidebar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebarNav">
+      <p class="nav-caption">Main</p>
+      <a href="#dashboard"      class="nav-link active" data-section="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+      <a href="#live-traffic"   class="nav-link" data-section="live-traffic"><i class="fa-solid fa-tower-broadcast"></i><span>Live Traffic</span></a>
+      <a href="#analytics"      class="nav-link" data-section="analytics"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
+
+      <p class="nav-caption">Cloud</p>
+      <a href="#infrastructure" class="nav-link" data-section="infrastructure"><i class="fa-solid fa-server"></i><span>Cloud Infrastructure</span></a>
+      <a href="#autoscaling"    class="nav-link" data-section="autoscaling"><i class="fa-solid fa-arrows-up-down"></i><span>Autoscaling</span></a>
+      <a href="#global-traffic" class="nav-link" data-section="global-traffic"><i class="fa-solid fa-earth-americas"></i><span>Global Traffic</span></a>
+
+      <p class="nav-caption">Intelligence</p>
+      <a href="#ml-prediction"  class="nav-link" data-section="ml-prediction"><i class="fa-solid fa-brain"></i><span>ML Prediction</span></a>
+      <a href="#reports"        class="nav-link" data-section="reports"><i class="fa-solid fa-file-lines"></i><span>Reports</span></a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <a href="#settings" class="nav-link" data-section="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+      <a href="#profile"  class="nav-link" data-section="profile"><i class="fa-solid fa-user-astronaut"></i><span>Profile</span></a>
+      <div class="sidebar-status">
+        <span class="status-dot dot-ok" id="sidebarApiDot"></span>
+        <div>
+          <span class="status-label" id="sidebarApiLabel">Backend connected</span>
+          <span class="status-sub">v2.4.1 · XGBoost engine</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ============================== MAIN ============================== -->
+  <div class="main-wrap">
+
+    <!-- Top navbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn d-lg-none" id="sidebarToggle" aria-label="Open sidebar">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="topbar-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="globalSearch" placeholder="Search metrics, servers, regions…" autocomplete="off" />
+          <kbd>/</kbd>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="api-pill" id="apiPill" title="Backend API status">
+          <span class="status-dot dot-ok" id="apiPillDot"></span>
+          <span id="apiPillText">Live</span>
+        </div>
+
+        <div class="topbar-clock">
+          <div class="clock-item"><i class="fa-regular fa-calendar"></i><span id="clockDate">—</span></div>
+          <div class="clock-item"><i class="fa-regular fa-clock"></i><span id="clockTime">—</span></div>
+        </div>
+
+        <button class="icon-btn" id="themeToggle" title="Toggle theme">
+          <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+
+        <!-- Notifications -->
+        <div class="dropdown">
+          <button class="icon-btn position-relative" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+            <i class="fa-regular fa-bell"></i>
+            <span class="notif-badge" id="notifBadge">3</span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end notif-menu">
+            <div class="notif-header">
+              <span>Notifications</span>
+              <button class="link-btn" id="clearNotifs">Clear all</button>
+            </div>
+            <div id="notifList"><!-- filled by app.js --></div>
+          </div>
+        </div>
+
+        <!-- User -->
+        <div class="dropdown">
+          <button class="avatar-btn" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="avatar">IB</span>
+            <span class="avatar-meta d-none d-md-block">
+              <span class="avatar-name">Intern</span>
+              <span class="avatar-role">Cloud Engineer</span>
+            </span>
+            <i class="fa-solid fa-chevron-down d-none d-md-block"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end user-menu">
+            <li><a class="dropdown-item" href="#profile"><i class="fa-regular fa-user"></i> My Profile</a></li>
+            <li><a class="dropdown-item" href="#settings"><i class="fa-solid fa-gear"></i> Settings</a></li>
+            <li><hr class="dropdown-divider" /></li>
+            <li><a class="dropdown-item text-danger" href="#"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="content" id="content">
+
+      <!-- Page header -->
+      <div class="page-header" id="dashboard">
+        <div>
+          <h1 class="page-title">Overview Dashboard</h1>
+          <p class="page-sub">Predictive autoscaling · XGBoost · 15-minute forecast horizon</p>
+        </div>
+        <div class="page-header-right">
+          <span class="live-badge"><span class="pulse-dot"></span> LIVE</span>
+          <span class="last-updated">Updated <span id="lastUpdated">—</span></span>
+          <button class="btn-refresh" id="manualRefresh" title="Refresh now">
+            <i class="fa-solid fa-rotate"></i><span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ SECTION: KPI CARDS ============ -->
+      <section class="kpi-grid" id="kpiGrid" aria-label="Key performance indicators">
+        <!-- KPI cards rendered by app.js (Stage 2) -->
+      </section>
+
+      <!-- ============ SECTION: LIVE TRAFFIC ============ -->
+      <section class="section-block" id="live-traffic">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-tower-broadcast"></i> Live Traffic &amp; Prediction</h2>
+          <span class="section-hint">Actual vs predicted request count · 15 min horizon</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-xl-8">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div>
+                  <h3 class="panel-title">Traffic Prediction</h3>
+                  <p class="panel-sub">Actual · Predicted · Future forecast</p>
+                </div>
+                <div class="legend-chips" id="trafficLegend">
+                  <span class="chip chip-blue">Actual</span>
+                  <span class="chip chip-purple">Predicted</span>
+                  <span class="chip chip-cyan">Forecast +15m</span>
+                </div>
+              </div>
+              <div id="chartTrafficMain" class="chart-box chart-lg"></div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-4">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div>
+                  <h3 class="panel-title">Resource Utilization</h3>
+                  <p class="panel-sub">CPU · Memory · Queue depth</p>
+                </div>
+              </div>
+              <div class="radial-stack">
+                <div id="chartCpu" class="chart-box radial-box"></div>
+                <div id="chartMemory" class="chart-box radial-box"></div>
+                <div id="chartQueue" class="chart-box radial-box"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: ANALYTICS ============ -->
+      <section class="section-block" id="analytics">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> Traffic Analytics</h2>
+          <span class="section-hint">Network throughput · latency · errors</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Network Throughput</h3><p class="panel-sub">Inbound vs outbound (MB/s)</p></div>
+              </div>
+              <div id="chartNetwork" class="chart-box"></div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Response Time &amp; Error Rate</h3><p class="panel-sub">p95 latency (ms) · error %</p></div>
+              </div>
+              <div id="chartLatency" class="chart-box"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: ML PREDICTION ============ -->
+      <section class="section-block" id="ml-prediction">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-brain"></i> ML Prediction Engine</h2>
+          <span class="section-hint">XGBoost regression · model quality metrics</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-4">
+            <div class="panel h-100" id="mlPanel"><!-- ML metrics rendered by app.js (Stage 5) --></div>
+          </div>
+          <div class="col-12 col-lg-4">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Prediction Error</h3><p class="panel-sub">Actual − predicted per interval</p></div>
+              </div>
+              <div id="chartPredError" class="chart-box"></div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-4">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Prediction Accuracy</h3><p class="panel-sub">Rolling accuracy trend (%)</p></div>
+              </div>
+              <div id="chartAccuracy" class="chart-box"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: AUTOSCALING ============ -->
+      <section class="section-block" id="autoscaling">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-arrows-up-down"></i> Autoscaling Engine</h2>
+          <span class="section-hint">Decision timeline · recommended capacity</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-4">
+            <div class="panel h-100" id="autoscalerPanel"><!-- decision card rendered by app.js (Stage 5) --></div>
+          </div>
+          <div class="col-12 col-lg-8">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Capacity Timeline</h3><p class="panel-sub">Current vs recommended server instances</p></div>
+                <div class="legend-chips">
+                  <span class="chip chip-cyan">Current</span>
+                  <span class="chip chip-amber">Recommended</span>
+                </div>
+              </div>
+              <div id="chartServers" class="chart-box"></div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="panel">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Autoscaling Timeline</h3><p class="panel-sub">Scale up · maintain · scale down events</p></div>
+              </div>
+              <div id="chartAutoscaleTimeline" class="chart-box chart-sm"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: GLOBAL TRAFFIC ============ -->
+      <section class="section-block" id="global-traffic">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-earth-americas"></i> Global Traffic Analytics</h2>
+          <span class="section-hint">Geographic distribution · platforms · subscriptions</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-xl-8">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">World Traffic Map</h3><p class="panel-sub">Requests by country (simulator metadata)</p></div>
+              </div>
+              <div id="mapWorld" class="chart-box chart-map"></div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-4">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Country Insights</h3><p class="panel-sub">By request volume</p></div>
+              </div>
+              <div id="countryDetails" class="rank-list"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="panel h-100">
+              <div class="panel-head"><div><h3 class="panel-title">Top Cloud Regions</h3></div></div>
+              <div id="chartRegions" class="chart-box chart-sm"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="panel h-100">
+              <div class="panel-head"><div><h3 class="panel-title">Top Devices</h3></div></div>
+              <div id="chartDevices" class="chart-box chart-sm"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="panel h-100">
+              <div class="panel-head"><div><h3 class="panel-title">Platform Distribution</h3></div></div>
+              <div id="chartPlatform" class="chart-box chart-sm"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="panel h-100">
+              <div class="panel-head"><div><h3 class="panel-title">Subscription &amp; Content</h3></div></div>
+              <div class="dual-donut">
+                <div id="chartSubscription" class="chart-box"></div>
+                <div id="chartContent" class="chart-box"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: INFRASTRUCTURE (HEALTH + ALERTS) ============ -->
+      <section class="section-block" id="infrastructure">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-server"></i> Cloud Infrastructure</h2>
+          <span class="section-hint">System health · live alert stream</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-7">
+            <div class="panel h-100" id="healthPanel"><!-- health rows rendered by app.js (Stage 5) --></div>
+          </div>
+          <div class="col-12 col-lg-5">
+            <div class="panel h-100">
+              <div class="panel-head">
+                <div><h3 class="panel-title">Live Alerts</h3><p class="panel-sub">Severity-based alert stream</p></div>
+                <span class="chip chip-red" id="alertCount">0 active</span>
+              </div>
+              <div class="alerts-feed" id="alertsFeed"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: REPORTS (SCALING HISTORY) ============ -->
+      <section class="section-block" id="reports">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-file-lines"></i> Scaling History Report</h2>
+          <span class="section-hint">Autoscaling decision audit log</span>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3 class="panel-title">Recent Decisions</h3><p class="panel-sub">Latest 12 autoscaling evaluations</p></div>
+            <button class="btn-refresh" id="exportCsv"><i class="fa-solid fa-download"></i><span>Export CSV</span></button>
+          </div>
+          <div class="table-responsive">
+            <table class="table data-table" id="scalingTable">
+              <thead>
+                <tr>
+                  <th>Timestamp</th><th>Country</th><th class="text-end">Current Req</th>
+                  <th class="text-end">Predicted Req</th><th class="text-end">CPU</th>
+                  <th class="text-end">Memory</th><th class="text-end">Servers</th>
+                  <th class="text-end">Recommended</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="scalingTableBody"><!-- rows rendered by app.js (Stage 5) --></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: SETTINGS ============ -->
+      <section class="section-block" id="settings">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-gear"></i> Settings</h2>
+          <span class="section-hint">Dashboard preferences</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="panel settings-panel">
+              <div class="panel-head"><div><h3 class="panel-title">Preferences</h3></div></div>
+              <div class="setting-row">
+                <div><span class="setting-label">Theme</span><span class="setting-sub">Dark / light appearance</span></div>
+                <button class="toggle-switch" id="settingsThemeToggle" role="switch" aria-checked="true"><span></span></button>
+              </div>
+              <div class="setting-row">
+                <div><span class="setting-label">Auto refresh</span><span class="setting-sub">Poll backend for live data</span></div>
+                <button class="toggle-switch on" id="autoRefreshToggle" role="switch" aria-checked="true"><span></span></button>
+              </div>
+              <div class="setting-row">
+                <div><span class="setting-label">Refresh interval</span><span class="setting-sub">How often data is polled</span></div>
+                <select class="select-input" id="refreshInterval">
+                  <option value="3000">3 seconds</option>
+                  <option value="5000" selected>5 seconds</option>
+                  <option value="10000">10 seconds</option>
+                  <option value="30000">30 seconds</option>
+                </select>
+              </div>
+              <div class="setting-row">
+                <div><span class="setting-label">Backend API URL</span><span class="setting-sub">Python backend base URL</span></div>
+                <input class="select-input" id="apiBaseUrl" type="text" value="http://localhost:8000" style="width:200px" />
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="panel settings-panel">
+              <div class="panel-head"><div><h3 class="panel-title">Data Source</h3></div></div>
+              <div class="datasource-info" id="datasourceInfo"><!-- rendered by app.js (Stage 6) --></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION: PROFILE ============ -->
+      <section class="section-block" id="profile">
+        <div class="section-head">
+          <h2 class="section-title"><i class="fa-solid fa-user-astronaut"></i> Profile</h2>
+          <span class="section-hint">Project &amp; owner information</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-5">
+            <div class="panel profile-card">
+              <span class="avatar avatar-xl">IB</span>
+              <h3 class="profile-name">IBM Intern</h3>
+              <p class="profile-role">Cloud Engineering · ML Ops</p>
+              <div class="profile-meta">
+                <div><i class="fa-solid fa-building"></i> IBM SkillsBuild Internship</div>
+                <div><i class="fa-solid fa-diagram-project"></i> Predictive Autoscaling Using ML on Cloud</div>
+                <div><i class="fa-solid fa-location-dot"></i> Cloud Region: ap-south-1</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="panel settings-panel">
+              <div class="panel-head"><div><h3 class="panel-title">Project Pipeline</h3><p class="panel-sub">Backend modules (read-only)</p></div></div>
+              <div class="pipeline-list">
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Dataset preprocessing</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Feature engineering (38 features)</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> XGBoost training</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Traffic predictor (15-min horizon)</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Traffic simulator</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Autoscaler decision engine</div>
+                <div class="pipeline-item done"><i class="fa-solid fa-circle-check"></i> Live prediction feed</div>
+                <div class="pipeline-item active"><i class="fa-solid fa-circle-half-stroke"></i> Dashboard frontend <em>(this UI)</em></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        <span>AutoScale AI · Predictive Autoscaling Dashboard</span>
+        <span>Frontend only — connects to existing Python backend APIs</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Vendor scripts -->
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="vendor/apexcharts/apexcharts.min.js"></script>
+<script src="vendor/plotly/plotly.min.js"></script>
+
+<!-- App scripts -->
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
